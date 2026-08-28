@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">AndroidCICDLab</string>
+    <string name="environment_name">prod</string>
+    <string name="home_tagline">A scenario lab for Gradle, quality gates, and GitHub Actions.</string>
+    <string name="home_pipeline_title">Local pipeline</string>
+    <string name="home_pipeline_body">prepareEnvironment → runQualityChecks → runTests → buildApplication → generateReport</string>
+    <string name="home_split_title">Build logic vs orchestration</string>
+    <string name="home_split_body">Gradle owns compilation, tests, and packaging. GitHub Actions only checks out the repo, sets up JDK, and invokes ./gradlew ci.</string>
+</resources>

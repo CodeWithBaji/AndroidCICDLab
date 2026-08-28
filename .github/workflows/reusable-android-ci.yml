@@ -1,0 +1,72 @@
+# Reusable Android CI for this repo and for other Scenario Labs.
+#
+# Callers:
+#   pr-validation.yml
+#   (other repositories via owner/AndroidCICDLab/.github/workflows/reusable-android-ci.yml@<sha>)
+#
+# Inputs keep GitHub Actions as orchestration. Build logic stays in Gradle.
+
+on:
+  workflow_call:
+    inputs:
+      gradle_task:
+        description: "Gradle task(s) to run after optional quality checks"
+        required: false
+        type: string
+        default: "ci"
+      build_variant:
+        description: "Android variant used only for documentation in logs (e.g. DevDebug)"
+        required: false
+        type: string
+        default: "DevDebug"
+      run_quality_checks:
+        description: "When true and gradle_task is not already 'ci', run detekt and ktlintCheck first"
+        required: false
+        type: boolean
+        default: true
+      java_version:
+        description: "Temurin JDK major version"
+        required: false
+        type: string
+        default: "17"
+      upload_apk:
+        description: "Upload the default CI APK as a GitHub Actions artifact"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  android-ci:
+    name: Android CI (${{ inputs.build_variant }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ inputs.java_version }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java_version }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Quality checks
+        if: ${{ inputs.run_quality_checks && inputs.gradle_task != 'ci' }}
+        run: ./gradlew detekt ktlintCheck --stacktrace
+
+      - name: Run Gradle (${{ inputs.gradle_task }})
+        run: ./gradlew ${{ inputs.gradle_task }} --stacktrace
+
+      - name: Upload debug APK
+        if: ${{ inputs.upload_apk && !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: app/build/outputs/apk/dev/debug/*.apk
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,28 @@
+# Scenario 11 — pull request validation.
+# Uses the reusable workflow so PR checks stay aligned with other Scenario Labs.
+# Configure a required status check named "PR validation / Android CI (DevDebug)"
+# in GitHub branch protection. Do not apply protection from this file.
+
+name: PR validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: PR validation
+    uses: ./.github/workflows/reusable-android-ci.yml
+    with:
+      gradle_task: ci
+      build_variant: DevDebug
+      run_quality_checks: true
+      upload_apk: true

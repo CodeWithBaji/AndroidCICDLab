@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">AndroidCICDLab</string>
+    <string name="environment_name">prod</string>
+</resources>

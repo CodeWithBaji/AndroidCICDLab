@@ -1,0 +1,82 @@
+# Scenario 9 — controlled pipeline failures.
+# Never enabled on push to main. Use workflow_dispatch so the default branch
+# stays green while you still have a one-click failure lab.
+
+name: Failure lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      failure:
+        description: "Which failure to reproduce"
+        type: choice
+        required: true
+        default: none
+        options:
+          - none
+          - unit-test
+          - detekt
+          - build
+          - missing-secret
+          - missing-artifact
+
+permissions:
+  contents: read
+
+jobs:
+  experiment:
+    name: Failure ${{ inputs.failure }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Failure A — unit test
+        if: ${{ inputs.failure == 'unit-test' }}
+        run: ./gradlew testDevDebugUnitTest -Plab.failTests=true --stacktrace
+
+      - name: Failure B — Detekt
+        if: ${{ inputs.failure == 'detekt' }}
+        run: ./gradlew detektFailureLab --stacktrace
+
+      - name: Failure C — build
+        if: ${{ inputs.failure == 'build' }}
+        run: ./gradlew assembleDevDebug -Plab.failBuild=true --stacktrace
+
+      - name: Failure D — missing secret
+        if: ${{ inputs.failure == 'missing-secret' }}
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "${KEYSTORE_PASSWORD}" ]; then
+            echo "::error::KEYSTORE_PASSWORD is not defined. This is Failure D."
+            echo "GitHub masks secrets; an empty env var means the secret was never set."
+            exit 1
+          fi
+          echo "Secret is present; this experiment did not fail."
+
+      - name: Failure E — missing artifact path
+        if: ${{ inputs.failure == 'missing-artifact' }}
+        run: ./gradlew help --stacktrace
+
+      - name: Upload a path that does not exist
+        if: ${{ inputs.failure == 'missing-artifact' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: app/build/outputs/apk/does-not-exist/*.apk
+          if-no-files-found: error
+
+      - name: Control — green pipeline
+        if: ${{ inputs.failure == 'none' }}
+        run: ./gradlew ci --stacktrace

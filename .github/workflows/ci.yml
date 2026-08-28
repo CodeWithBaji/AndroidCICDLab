@@ -1,0 +1,76 @@
+# Scenario 8 — explicit CI pipeline.
+# Triggered on pushes and pull requests targeting main.
+# Each step is commented because this file is a teaching artifact, not just automation.
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Quality, test, assemble
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # --- Checkout -------------------------------------------------------
+      # actions/checkout clones the commit that triggered the workflow.
+      # Without this step there is no source, Gradle wrapper, or build-logic.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- Setup JDK ------------------------------------------------------
+      # AGP 9 / Gradle 9 require JDK 17+. Temurin is the Eclipse Adoptium build.
+      # setup-java also exports JAVA_HOME for the Gradle wrapper.
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # --- Restore Gradle Cache -------------------------------------------
+      # gradle/actions/setup-gradle caches the wrapper distribution and
+      # configuration-cache/build-cache between runs. That is restore + save.
+      - name: Restore Gradle Cache
+        uses: gradle/actions/setup-gradle@v4
+
+      # --- Quality Checks -------------------------------------------------
+      # Fail the job before tests if Detekt or Ktlint find violations.
+      # Early failure is cheaper than compiling a doomed APK.
+      - name: Quality Checks
+        run: ./gradlew detekt ktlintCheck --stacktrace
+
+      # --- Unit Tests -----------------------------------------------------
+      # testDevDebugUnitTest is the default CI variant (dev + debug).
+      # A failing assertion makes Gradle exit non-zero; the job fails.
+      - name: Unit Tests
+        run: ./gradlew testDevDebugUnitTest --stacktrace
+
+      # --- Build APK ------------------------------------------------------
+      # Packages the same variant QA would sideload. Output lives under
+      # app/build/outputs/apk/dev/debug/.
+      - name: Build APK
+        run: ./gradlew assembleDevDebug --stacktrace
+
+      # --- Upload Artifact ------------------------------------------------
+      # GitHub Actions artifacts are job outputs, not Play Store releases.
+      # Download them from the workflow run UI. Retention is 14 days.
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: app/build/outputs/apk/dev/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14

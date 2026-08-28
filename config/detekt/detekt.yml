@@ -1,0 +1,48 @@
+config:
+  validation: true
+  warningsAsErrors: false
+
+complexity:
+  LongMethod:
+    active: true
+    allowedLines: 40
+  TooManyFunctions:
+    active: true
+    allowedFunctionsPerFile: 6
+    allowedFunctionsPerClass: 6
+    allowedFunctionsPerObject: 6
+    allowedFunctionsPerInterface: 6
+    ignoreDeprecated: true
+    ignorePrivate: false
+    ignoreOverridden: true
+  ComplexCondition:
+    active: true
+    allowedConditions: 4
+
+style:
+  MagicNumber:
+    active: true
+    ignoreNumbers: ['-1', '0', '1', '2']
+    ignoreHashCodeFunction: true
+    ignorePropertyDeclaration: true
+    ignoreLocalVariableDeclaration: false
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotation: true
+    ignoreNamedArgument: true
+    ignoreEnums: true
+    ignoreRanges: true
+    ignoreExtensionFunctions: true
+  WildcardImport:
+    active: true
+    excludeImports: []
+  UnusedPrivateProperty:
+    active: true
+  MaxLineLength:
+    active: true
+    maxLineLength: 120
+    excludeCommentStatements: true
+
+naming:
+  FunctionNaming:
+    active: true
+    functionPattern: '[a-zA-Z][a-zA-Z0-9]*'

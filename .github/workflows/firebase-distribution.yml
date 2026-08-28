@@ -1,0 +1,55 @@
+# Scenario 13 — optional CD path to testers.
+# Does not run on every push. CI stays on ci.yml; this workflow is distribution.
+
+name: Firebase App Distribution
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  distribute-qa:
+    name: QA APK to testers
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Tests + QA APK
+        run: ./gradlew testQaDebugUnitTest assembleQaDebug --stacktrace
+
+      - name: Upload QA APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-debug-apk
+          path: app/build/outputs/apk/qa/debug/*.apk
+          if-no-files-found: error
+
+      - name: Firebase App Distribution
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_GROUPS: ${{ secrets.FIREBASE_TESTER_GROUPS }}
+        run: |
+          if [ -z "${FIREBASE_SERVICE_ACCOUNT}" ] || [ -z "${FIREBASE_APP_ID}" ]; then
+            echo "Firebase secrets are placeholders. Skipping upload."
+            echo "CI produced the QA APK; CD would call firebase appdistribution:distribute."
+            exit 0
+          fi
+          echo "firebase appdistribution:distribute app/build/outputs/apk/qa/debug/*.apk \\"
+          echo "  --app \"${FIREBASE_APP_ID}\" --groups \"${FIREBASE_GROUPS}\""
